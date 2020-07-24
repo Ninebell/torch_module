@@ -47,3 +47,8 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
         if checkpoint is not None:
             checkpoint(model, train_loss, validate_loss)
 
+
+def get_param_count(net):
+    total_params = sum(p.numel() for p in net.parameters())
+    return total_params
+
