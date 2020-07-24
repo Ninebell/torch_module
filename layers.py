@@ -199,3 +199,34 @@ class ProjLayer(nn.Module):
                 y_pt = x[b,j,1].getitem()
                 t = self.make_kernel((64, 64), (x_pt, y_pt), 3)
         return x
+
+class DenseBlock(nn.Module):
+    def __init__(self, input_ch, growth_ch, layer, activation='relu'):
+        super(DenseBlock, self).__init__()
+        self.input_ch = input_ch
+        self.growth_ch = growth_ch
+        self.layer = layer
+        self.activation = activation
+        self.__build__()
+
+    def __build__(self):
+        self.block_layer = nn.ModuleList()
+        for k in range(self.layer):
+            input_ch = self.input_ch if k == 0 else self.input_ch + k*self.growth_ch
+            output_ch = self.growth_ch
+            conv1 = Conv2D(input_ch, output_ch, 1, 1, 0, self.activation, True)
+            conv3 = Conv2D(output_ch, output_ch, 3, 1, 1, self.activation, True)
+            seq = nn.Sequential(
+                conv1,
+                conv3
+            )
+            self.block_layer.append(seq)
+
+    def forward(self, x):
+        input_layer = x
+        for block in self.block_layer:
+            x = block(input_layer)
+            input_layer = torch.cat([input_layer, x], 1)
+
+        return input_layer
+
