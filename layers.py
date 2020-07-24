@@ -1,5 +1,8 @@
 import torch
+from torch.distributions import distribution as dist
 import torch.nn as nn
+import numpy as np
+import math
 
 activation_layer = {
     'sigmoid': nn.Sigmoid(),
@@ -172,3 +175,27 @@ class Hourglass(nn.Module):
 
         return up
 
+
+class ProjLayer(nn.Module):
+    def __init__(self):
+        super(ProjLayer, self).__init__()
+
+    def make_kernel(self, shape, point, radius):
+        base = np.zeros(shape)
+
+        x = math.ceil(point[0])
+        y = math.ceil(point[1])
+
+        for r in range(shape[0]):
+            for c in range(shape[1]):
+                base[r, c] = np.exp(-((r - y) ** 2 + (c - x) ** 2) / radius)
+
+        return base
+
+    def forward(self, x):
+        for b in x.shape[0]:
+            for j in range(21):
+                x_pt = x[b,j,0].getitem()
+                y_pt = x[b,j,1].getitem()
+                t = self.make_kernel((64, 64), (x_pt, y_pt), 3)
+        return x
