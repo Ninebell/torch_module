@@ -176,15 +176,49 @@ class Hourglass(nn.Module):
         return up
 
 
-class ProjLayer(nn.Module):
-    def __init__(self):
-        super(ProjLayer, self).__init__()
+class ProjLayer(torch.autograd.Function):
 
-    def make_kernel(self, shape, point, radius):
+    @staticmethod
+    def forward(ctx, x):
+        # ctx.save_for_backward(x)
+        print(x.shape[0])
+        base = torch.ones((1, 64, 64))
+        result = None
+        for b in range(x.shape[0]):
+            batch_base = torch.ones((1, 64, 64))
+            for j in range(21):
+                x_pt = x[b, j, 0, 0]
+                y_pt = x[b, j, 0, 1]
+                t = ProjLayer.make_kernel((64, 64), (x_pt, y_pt), 3)
+                if j == 0:
+                    batch_base = base * t
+                else:
+                    batch_base = torch.cat([batch_base, base * t], 0)
+
+            batch_base = batch_base.reshape((1, 21, 64, 64))
+            if b == 0:
+                result = batch_base
+            else:
+                result = torch.cat([result, batch_base], 0)
+
+        print(result.shape)
+        # ctx.save_for_backward(result)
+        return result
+        # return input.clamp(min=0)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        # grad_input[input < 0] = 0
+        return torch.ones((grad_input.shape[0], 21, 1, 3))
+
+    @staticmethod
+    def make_kernel(shape, point, radius):
         base = np.zeros(shape)
 
-        x = math.ceil(point[0])
-        y = math.ceil(point[1])
+        x = math.ceil(point[0]*64)
+        y = math.ceil(point[1]*64)
 
         for r in range(shape[0]):
             for c in range(shape[1]):
@@ -192,13 +226,6 @@ class ProjLayer(nn.Module):
 
         return base
 
-    def forward(self, x):
-        for b in x.shape[0]:
-            for j in range(21):
-                x_pt = x[b,j,0].getitem()
-                y_pt = x[b,j,1].getitem()
-                t = self.make_kernel((64, 64), (x_pt, y_pt), 3)
-        return x
 
 class DenseBlock(nn.Module):
     def __init__(self, input_ch, growth_ch, layer, activation='relu'):
