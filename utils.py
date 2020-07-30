@@ -21,11 +21,12 @@ class TorchBoard:
         self.writer.add_scalar('Acc/test', value, n_iter)
 
 
-def train_model(epoches, model, loss, optim, train_loader, validate_loader, save_path=None, tag=None, checkpoint=None):
+def train_model(epoches, model, loss, optim, train_loader, validate_loader, save_path=None, tag=None, checkpoint=None, accuracy=None):
     tb = TorchBoard(save_path, tag)
     for epoch in range(1, epoches+1):
         train_loss = 0
         validate_loss = 0
+        validate_acc = 0
         for iter, (x, y) in tqdm.tqdm(enumerate(train_loader['loader'](train_loader['conf']))):
             optim.zero_grad()
             result = model(x)
@@ -42,13 +43,18 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                 result = model(x)
                 iter_loss = loss(y, result)
                 validate_loss += iter_loss
+                if accuracy is not None:
+                    acc = accuracy(y, result)
+                    validate_acc += acc
                 del iter_loss
                 del result
         validate_loss /= iter
+        validate_acc /= iter
 
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)
             tb.add_validate_loss(validate_loss, epoch)
+            tb.add_validate_acc(validate_acc, epoch)
 
         if checkpoint is not None:
             checkpoint(model, train_loss, validate_loss)
