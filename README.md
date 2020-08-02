@@ -1,7 +1,7 @@
 # Torch Module
 torch module what I use and create.
 
-### Layers
+## Layers
 - Conv2D 
 > Param | 기존 conv, batch, activation 분리되어있던걸 Sequential로 묶음
 >- input channel: 입력 channel 크기
@@ -50,7 +50,7 @@ torch module what I use and create.
 >- activation: 활성화 함수
 >- batch: 배치 유무
 
-### Utils
+## Utils
 
 - TorchBoard
 > Param | tensor board
@@ -64,7 +64,13 @@ torch module what I use and create.
 >- loss: 사용 할 손실 함수
 >- optim: 사용 할 옵티마이저
 >- train_loader: 학습 데이터 로더
+>   > Param | dictionary이용
+>   >- loader: loader 함수
+>   >- conf: loader 함수 파라미터
 >- validate_loader: 검증 데이터 로더
+>   > Param | dictionary이용
+>   >- loader: loader 함수
+>   >- conf: loader 함수 파라미터
 >- save_path: model, tensor board 저장 경로
 >- tag: tensor board tag
 >- checkpoint: 
@@ -75,3 +81,7 @@ torch module what I use and create.
 - get param count
 > Param | 모델 총 파라미터 수
 >- net: 모델
+
+## Loss
+
+- penalty-reduced pixel wise logistic regression with focal loss [Paper](https://arxiv.org/abs/1904.07850)
