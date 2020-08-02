@@ -21,7 +21,8 @@ class Conv2D(nn.Module):
             self.activation = activation if type(activation) != str else activation_layer[activation]
 
         conv = nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
-        nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
+        if activation == 'relu':
+            nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
 
         self.seq = nn.Sequential(
             conv,
@@ -92,7 +93,7 @@ class BottleNeckBlock(nn.Module):
         self.squeeze_feature = input_feature // 4
         self.attention = attention
         self.ratio = ratio
-        self.activation = activation
+        self.activation = activation if type(activation) is not str else activation_layer[activation]
         self.__build__()
 
     def __build__(self):
@@ -256,4 +257,20 @@ class DenseBlock(nn.Module):
             input_layer = torch.cat([input_layer, x], 1)
 
         return input_layer
+
+
+class UpConv2D(nn.Module):
+    def __init__(self, up_scale, input_ch, output_ch, kernel_size, stride, padding, activation='relu', batch=False):
+        super(UpConv2D, self).__init__()
+        self.up_scale = up_scale
+        self.__build__(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+
+    def __build__(self, input_ch, output_ch, kernel_size, stride, padding, activation, batch):
+        up = nn.Upsample(scale_factor=self.up_scale, mode='nearest')
+        conv_2d = Conv2D(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+        self.seq = nn.Sequential(up, conv_2d)
+
+    def forward(self, x):
+        x = self.seq(x)
+        return x
 
