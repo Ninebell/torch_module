@@ -40,7 +40,7 @@ class ChannelPool(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, feature, ratio):
+    def __init__(self, feature, ratio=16):
         super(AttentionBlock, self).__init__()
         self.__build__(feature, ratio)
 
@@ -122,11 +122,12 @@ class BottleNeckBlock(nn.Module):
 
 
 class Hourglass(nn.Module):
-    def __init__(self, feature, layers, attention=True):
+    def __init__(self, feature, layers, attention=True, ratio=16):
         super(Hourglass, self).__init__()
         self.feature = feature
         self.layers = layers
         self.attention = attention
+        self.ratio = ratio
 
         self.__build__()
 
@@ -139,16 +140,16 @@ class Hourglass(nn.Module):
         self.up_conv = nn.ModuleList()
 
         for i in range(self.layers):
-            self.downs.append(BottleNeckBlock(o_f, self.attention))
+            self.downs.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.ups.append(BottleNeckBlock(o_f, self.attention))
+            self.ups.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.skips.append(BottleNeckBlock(o_f, self.attention))
+            self.skips.append(BottleNeckBlock(o_f, self.attention, self.ratio))
             if i != self.layers-1:
                 self.up_conv.append(nn.ConvTranspose2d(o_f, o_f, kernel_size=2, stride=2))
 
-        self.final_skip_1 = BottleNeckBlock(o_f, self.attention)
-        self.final_skip_2 = BottleNeckBlock(o_f, self.attention)
+        self.final_skip_1 = BottleNeckBlock(o_f, self.attention, self.ratio)
+        self.final_skip_2 = BottleNeckBlock(o_f, self.attention, self.ratio)
 
         self.max_pool = nn.MaxPool2d(2, stride=2, padding=0)
 
