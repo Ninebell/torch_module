@@ -40,7 +40,7 @@ class ChannelPool(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, feature, ratio):
+    def __init__(self, feature, ratio=16):
         super(AttentionBlock, self).__init__()
         self.__build__(feature, ratio)
 
@@ -93,10 +93,7 @@ class BottleNeckBlock(nn.Module):
         self.squeeze_feature = input_feature // 4
         self.attention = attention
         self.ratio = ratio
-        if type(activation) == str:
-            self.activation = activation_layer[activation]
-        else:
-            self.activation = activation
+        self.activation = activation if type(activation) is not str else activation_layer[activation]
         self.__build__()
 
     def __build__(self):
@@ -125,11 +122,12 @@ class BottleNeckBlock(nn.Module):
 
 
 class Hourglass(nn.Module):
-    def __init__(self, feature, layers, attention=True):
+    def __init__(self, feature, layers, attention=True, ratio=16):
         super(Hourglass, self).__init__()
         self.feature = feature
         self.layers = layers
         self.attention = attention
+        self.ratio = ratio
 
         self.__build__()
 
@@ -142,16 +140,16 @@ class Hourglass(nn.Module):
         self.up_conv = nn.ModuleList()
 
         for i in range(self.layers):
-            self.downs.append(BottleNeckBlock(o_f, self.attention))
+            self.downs.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.ups.append(BottleNeckBlock(o_f, self.attention))
+            self.ups.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.skips.append(BottleNeckBlock(o_f, self.attention))
+            self.skips.append(BottleNeckBlock(o_f, self.attention, self.ratio))
             if i != self.layers-1:
                 self.up_conv.append(nn.ConvTranspose2d(o_f, o_f, kernel_size=2, stride=2))
 
-        self.final_skip_1 = BottleNeckBlock(o_f, self.attention)
-        self.final_skip_2 = BottleNeckBlock(o_f, self.attention)
+        self.final_skip_1 = BottleNeckBlock(o_f, self.attention, self.ratio)
+        self.final_skip_2 = BottleNeckBlock(o_f, self.attention, self.ratio)
 
         self.max_pool = nn.MaxPool2d(2, stride=2, padding=0)
 
@@ -260,4 +258,20 @@ class DenseBlock(nn.Module):
             input_layer = torch.cat([input_layer, x], 1)
 
         return input_layer
+
+
+class UpConv2D(nn.Module):
+    def __init__(self, up_scale, input_ch, output_ch, kernel_size, stride, padding, activation='relu', batch=False):
+        super(UpConv2D, self).__init__()
+        self.up_scale = up_scale
+        self.__build__(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+
+    def __build__(self, input_ch, output_ch, kernel_size, stride, padding, activation, batch):
+        up = nn.Upsample(scale_factor=self.up_scale, mode='nearest')
+        conv_2d = Conv2D(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+        self.seq = nn.Sequential(up, conv_2d)
+
+    def forward(self, x):
+        x = self.seq(x)
+        return x
 

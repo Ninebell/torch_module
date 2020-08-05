@@ -3,7 +3,6 @@ import tqdm
 import torch
 
 
-
 class TorchBoard:
     def __init__(self, dir_path, comment):
         self.writer = SummaryWriter(log_dir=dir_path, comment=comment)
@@ -22,6 +21,8 @@ class TorchBoard:
 
 
 def train_model(epoches, model, loss, optim, train_loader, validate_loader, save_path=None, tag=None, checkpoint=None, accuracy=None):
+    if torch.cuda.is_available():
+        model = model.cuda()
     tb = TorchBoard(save_path, tag)
     for epoch in range(1, epoches+1):
         train_loss = 0
