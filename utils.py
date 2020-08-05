@@ -36,7 +36,8 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
             optim.step()
             del iter_loss
             del result
-        train_loss /= iter
+        print(iter)
+        train_loss /= (iter+1)
 
         with torch.no_grad():
             for iter, (x, y) in enumerate(validate_loader['loader'](validate_loader['conf'])):
@@ -48,8 +49,8 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                     validate_acc += acc
                 del iter_loss
                 del result
-        validate_loss /= iter
-        validate_acc /= iter
+        validate_loss /= (iter+1)
+        validate_acc /= (iter+1)
 
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)

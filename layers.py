@@ -21,7 +21,8 @@ class Conv2D(nn.Module):
             self.activation = activation if type(activation) != str else activation_layer[activation]
 
         conv = nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
-        nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
+        if activation == 'relu':
+            nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
 
         self.seq = nn.Sequential(
             conv,
@@ -92,7 +93,10 @@ class BottleNeckBlock(nn.Module):
         self.squeeze_feature = input_feature // 4
         self.attention = attention
         self.ratio = ratio
-        self.activation = activation
+        if type(activation) == str:
+            self.activation = activation_layer[activation]
+        else:
+            self.activation = activation
         self.__build__()
 
     def __build__(self):
@@ -115,7 +119,7 @@ class BottleNeckBlock(nn.Module):
         x = self.c3(x)
 
         if self.attention:
-            x = self.attention.forward(x)
+            x = self.attention(x)
 
         return x + init
 
