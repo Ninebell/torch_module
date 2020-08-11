@@ -48,8 +48,8 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                     train_acc[idx] += acc
             del iter_loss
             del result
-        train_loss /= iter
-        train_acc = np.array(train_acc)/iter
+        train_loss /= (iter+1)
+        train_acc = np.array(train_acc)/(iter+1)
 
         model.eval()
         with torch.no_grad():
@@ -65,8 +65,8 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
 
                 del iter_loss
                 del result
-        validate_loss /= iter
-        validate_acc = np.array(validate_acc)/iter
+        validate_loss /= (iter+1)
+        validate_acc = np.array(validate_acc)/(iter+1)
 
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)

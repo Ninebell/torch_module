@@ -116,7 +116,7 @@ class BottleNeckBlock(nn.Module):
         x = self.c3(x)
 
         if self.attention:
-            x = self.attention.forward(x)
+            x = self.attention(x)
 
         return x + init
 
