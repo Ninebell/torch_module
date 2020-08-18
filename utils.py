@@ -28,6 +28,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
         train_loss = 0
         validate_loss = 0
         validate_acc = 0
+        model.train()
         for iter, (x, y) in tqdm.tqdm(enumerate(train_loader['loader'](train_loader['conf']))):
             optim.zero_grad()
             result = model(x)
@@ -40,6 +41,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
         print(iter)
         train_loss /= (iter+1)
 
+        model.eval()
         with torch.no_grad():
             for iter, (x, y) in enumerate(validate_loader['loader'](validate_loader['conf'])):
                 result = model(x)
