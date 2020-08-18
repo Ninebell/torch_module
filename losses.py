@@ -1,10 +1,10 @@
 import torch
 
 
-def pixel_logistic_focal_loss(output, target, alpha=2, beta=4):
+def pixel_logistic_focal_loss(target, output, alpha=2, beta=4, shape=(64,64)):
 
-    ones = torch.ones((64,64)).cuda()
-    zeros = torch.zeros((64,64)).cuda()
+    ones = torch.ones(shape).cuda()
+    zeros = torch.zeros(shape).cuda()
 
     ones_board = torch.where(target == 1, output, ones)
     zeros_board = torch.where(target != 1, output, zeros)
