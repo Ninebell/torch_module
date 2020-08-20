@@ -29,11 +29,13 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
     for epoch in range(1, epoches+1):
         model.train()
         train_loss = 0
+        validate_loss = 0
+
         if accuracy is not None:
             train_acc = [0 for _ in range(len(accuracy))]
-        validate_loss = 0
         if accuracy is not None:
             validate_acc = [0 for _ in range(len(accuracy))]
+
         for iter, (x, y) in tqdm.tqdm(enumerate(train_loader['loader'](train_loader['conf']))):
             optim.zero_grad()
             result = model(x)
@@ -44,7 +46,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
             if accuracy is not None:
                 for idx, acc_di in enumerate(accuracy):
                     metrics = acc_di['metrics']
-                    acc = metrics(y, result)
+                    acc = metrics(y, result, 0, x)
                     train_acc[idx] += acc
             del iter_loss
             del result
@@ -60,7 +62,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                 if accuracy is not None:
                     for idx, acc_di in enumerate(accuracy):
                         metrics = acc_di['metrics']
-                        acc = metrics(y, result)
+                        acc = metrics(y, result, 1, x)
                         validate_acc[idx] += acc
 
                 del iter_loss
@@ -78,7 +80,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                     tb.add_train_acc(train_acc[idx], epoch, acc_di['name'])
 
         if checkpoint is not None:
-            checkpoint(model, train_loss, validate_loss)
+            checkpoint(model, train_acc[1], validate_acc[1])
 
 
 def get_param_count(net):

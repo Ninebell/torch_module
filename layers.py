@@ -236,6 +236,7 @@ class DenseBlock(nn.Module):
         self.growth_ch = growth_ch
         self.layer = layer
         self.activation = activation
+        self.out_ch = 0
         self.__build__()
 
     def __build__(self):
@@ -250,6 +251,7 @@ class DenseBlock(nn.Module):
                 conv3
             )
             self.block_layer.append(seq)
+        self.out_ch = self.input_ch + self.layer*self.growth_ch
 
     def forward(self, x):
         input_layer = x
