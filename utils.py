@@ -22,7 +22,12 @@ class TorchBoard:
 
 
 def train_model(epoches, model, loss, optim, train_loader, validate_loader, save_path=None, tag=None, checkpoint=None, accuracy=None):
-    print('{:,}'.format(get_param_count(model)))
+    print()
+    print("{0:^40s}".format('Train Information'))
+    print('{0:^40s:}'.format("{0:22s}: {1:10,d}".format('model # param', get_param_count(model))))
+    print("{0:^40s}".format("{0:22s}: {1:10,d}".format('epoch', epoches)))
+    print("{0:^40s}".format("{0:22s}: {1:10,d}".format('batch size', train_loader['batch'])))
+
     if torch.cuda.is_available():
         model = model.cuda()
     tb = TorchBoard(save_path, tag)
