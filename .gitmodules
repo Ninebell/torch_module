@@ -1,0 +1,3 @@
+[submodule "poseval"]
+	path = poseval
+	url = https://github.com/leonid-pishchulin/poseval

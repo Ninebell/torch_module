@@ -1,5 +1,8 @@
 import torch
+from torch.distributions import distribution as dist
 import torch.nn as nn
+import numpy as np
+import math
 
 activation_layer = {
     'sigmoid': nn.Sigmoid(),
@@ -18,7 +21,8 @@ class Conv2D(nn.Module):
             self.activation = activation if type(activation) != str else activation_layer[activation]
 
         conv = nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
-        nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
+        if activation == 'relu':
+            nn.init.kaiming_uniform_(conv.weight, nonlinearity='relu')
 
         self.seq = nn.Sequential(
             conv,
@@ -36,7 +40,7 @@ class ChannelPool(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, feature, ratio):
+    def __init__(self, feature, ratio=16):
         super(AttentionBlock, self).__init__()
         self.__build__(feature, ratio)
 
@@ -89,7 +93,7 @@ class BottleNeckBlock(nn.Module):
         self.squeeze_feature = input_feature // 4
         self.attention = attention
         self.ratio = ratio
-        self.activation = activation
+        self.activation = activation if type(activation) is not str else activation_layer[activation]
         self.__build__()
 
     def __build__(self):
@@ -112,17 +116,18 @@ class BottleNeckBlock(nn.Module):
         x = self.c3(x)
 
         if self.attention:
-            x = self.attention.forward(x)
+            x = self.attention(x)
 
         return x + init
 
 
 class Hourglass(nn.Module):
-    def __init__(self, feature, layers, attention=True):
+    def __init__(self, feature, layers, attention=True, ratio=16):
         super(Hourglass, self).__init__()
         self.feature = feature
         self.layers = layers
         self.attention = attention
+        self.ratio = ratio
 
         self.__build__()
 
@@ -135,16 +140,16 @@ class Hourglass(nn.Module):
         self.up_conv = nn.ModuleList()
 
         for i in range(self.layers):
-            self.downs.append(BottleNeckBlock(o_f, self.attention))
+            self.downs.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.ups.append(BottleNeckBlock(o_f, self.attention))
+            self.ups.append(BottleNeckBlock(o_f, self.attention, self.ratio))
 
-            self.skips.append(BottleNeckBlock(o_f, self.attention))
+            self.skips.append(BottleNeckBlock(o_f, self.attention, self.ratio))
             if i != self.layers-1:
                 self.up_conv.append(nn.ConvTranspose2d(o_f, o_f, kernel_size=2, stride=2))
 
-        self.final_skip_1 = BottleNeckBlock(o_f, self.attention)
-        self.final_skip_2 = BottleNeckBlock(o_f, self.attention)
+        self.final_skip_1 = BottleNeckBlock(o_f, self.attention, self.ratio)
+        self.final_skip_2 = BottleNeckBlock(o_f, self.attention, self.ratio)
 
         self.max_pool = nn.MaxPool2d(2, stride=2, padding=0)
 
@@ -171,4 +176,104 @@ class Hourglass(nn.Module):
                 up = self.ups[i](up)
 
         return up
+
+
+class ProjLayer(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, x):
+        # ctx.save_for_backward(x)
+        print(x.shape[0])
+        base = torch.ones((1, 64, 64))
+        result = None
+        for b in range(x.shape[0]):
+            batch_base = torch.ones((1, 64, 64))
+            for j in range(21):
+                x_pt = x[b, j, 0, 0]
+                y_pt = x[b, j, 0, 1]
+                t = ProjLayer.make_kernel((64, 64), (x_pt, y_pt), 3)
+                if j == 0:
+                    batch_base = base * t
+                else:
+                    batch_base = torch.cat([batch_base, base * t], 0)
+
+            batch_base = batch_base.reshape((1, 21, 64, 64))
+            if b == 0:
+                result = batch_base
+            else:
+                result = torch.cat([result, batch_base], 0)
+
+        print(result.shape)
+        # ctx.save_for_backward(result)
+        return result
+        # return input.clamp(min=0)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        # grad_input[input < 0] = 0
+        return torch.ones((grad_input.shape[0], 21, 1, 3))
+
+    @staticmethod
+    def make_kernel(shape, point, radius):
+        base = np.zeros(shape)
+
+        x = math.ceil(point[0]*64)
+        y = math.ceil(point[1]*64)
+
+        for r in range(shape[0]):
+            for c in range(shape[1]):
+                base[r, c] = np.exp(-((r - y) ** 2 + (c - x) ** 2) / radius)
+
+        return base
+
+
+class DenseBlock(nn.Module):
+    def __init__(self, input_ch, growth_ch, layer, activation='relu'):
+        super(DenseBlock, self).__init__()
+        self.input_ch = input_ch
+        self.growth_ch = growth_ch
+        self.layer = layer
+        self.activation = activation
+        self.out_ch = 0
+        self.__build__()
+
+    def __build__(self):
+        self.block_layer = nn.ModuleList()
+        for k in range(self.layer):
+            input_ch = self.input_ch if k == 0 else self.input_ch + k*self.growth_ch
+            output_ch = self.growth_ch
+            conv1 = Conv2D(input_ch, output_ch, 1, 1, 0, self.activation, True)
+            conv3 = Conv2D(output_ch, output_ch, 3, 1, 1, self.activation, True)
+            seq = nn.Sequential(
+                conv1,
+                conv3
+            )
+            self.block_layer.append(seq)
+        self.out_ch = self.input_ch + self.layer*self.growth_ch
+
+    def forward(self, x):
+        input_layer = x
+        for block in self.block_layer:
+            x = block(input_layer)
+            input_layer = torch.cat([input_layer, x], 1)
+
+        return input_layer
+
+
+class UpConv2D(nn.Module):
+    def __init__(self, up_scale, input_ch, output_ch, kernel_size, stride, padding, activation='relu', batch=False):
+        super(UpConv2D, self).__init__()
+        self.up_scale = up_scale
+        self.__build__(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+
+    def __build__(self, input_ch, output_ch, kernel_size, stride, padding, activation, batch):
+        up = nn.Upsample(scale_factor=self.up_scale, mode='nearest')
+        conv_2d = Conv2D(input_ch, output_ch, kernel_size, stride, padding, activation, batch)
+        self.seq = nn.Sequential(up, conv_2d)
+
+    def forward(self, x):
+        x = self.seq(x)
+        return x
 
