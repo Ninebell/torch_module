@@ -2,6 +2,31 @@ from torch.utils.tensorboard import SummaryWriter
 import tqdm
 import numpy as np
 import torch
+import math
+
+
+class TrainInfo:
+    def __init__(self):
+        self.train_loss = math.inf
+        self.validate_loss = math.inf
+        self.train_acc = []
+        self.validate_acc = []
+        self.min_train_loss = math.inf
+        self.min_validate_loss = math.inf
+        self.max_train_acc = None
+        self.max_validate_acc = None
+
+    def set_train_loss(self, loss):
+        self.train_loss = loss
+
+    def set_validate_loss(self, loss):
+        self.validate_loss = loss
+
+    def set_train_acc(self, acc):
+        self.train_acc = acc
+
+    def set_validate_acc(self, acc):
+        self.validate_acc = acc
 
 
 class TorchBoard:
@@ -24,12 +49,15 @@ class TorchBoard:
 def train_model(epoches, model, loss, optim, train_loader, validate_loader, save_path=None, tag=None, checkpoint=None, accuracy=None):
     print()
     print("{0:^40s}".format('Train Information'))
-    print('{0:^40s:}'.format("{0:22s}: {1:10,d}".format('model # param', get_param_count(model))))
+    print('{0:^40s}'.format("{0:22s}: {1:10,d}".format('model # param', get_param_count(model))))
     print("{0:^40s}".format("{0:22s}: {1:10,d}".format('epoch', epoches)))
-    print("{0:^40s}".format("{0:22s}: {1:10,d}".format('batch size', train_loader['batch'])))
+    print("{0:^40s}".format("{0:22s}: {1:10,d}".format('batch size', train_loader['conf']['batch'])))
 
-    if torch.cuda.is_available():
-        model = model.cuda()
+    train_info = TrainInfo()
+
+    # if torch.cuda.is_available():
+    #     print('make cuda')
+    #     model = model.cuda()
     tb = TorchBoard(save_path, tag)
     for epoch in range(1, epoches+1):
         model.train()
@@ -55,7 +83,11 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
             del iter_loss
             del result
         train_loss /= (iter+1)
-        train_acc = np.array(train_acc)/(iter+1)
+        train_info.set_train_loss(train_loss)
+
+        if accuracy is not None:
+            train_acc = np.array(train_acc)/(iter+1)
+            train_info.set_train_acc(train_acc)
 
         model.eval()
         with torch.no_grad():
@@ -72,7 +104,11 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                 del iter_loss
                 del result
         validate_loss /= (iter+1)
-        validate_acc = np.array(validate_acc)/(iter+1)
+        train_info.set_validate_loss(validate_loss)
+        if accuracy is not None:
+            validate_acc = np.array(validate_acc)/(iter+1)
+            train_info.set_validate_loss(validate_acc)
+
 
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)
@@ -84,7 +120,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                     tb.add_train_acc(train_acc[idx], epoch, acc_di['name'])
 
         if checkpoint is not None:
-            checkpoint(model, train_acc[1], validate_acc[1])
+            checkpoint(model, train_info)
 
 
 def get_param_count(net):
