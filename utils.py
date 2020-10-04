@@ -6,7 +6,8 @@ import math
 
 
 class TrainInfo:
-    def __init__(self):
+    def __init__(self, path):
+        self.save_path = path
         self.train_loss = math.inf
         self.validate_loss = math.inf
         self.train_acc = []
@@ -53,11 +54,11 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
     print("{0:^40s}".format("{0:22s}: {1:10,d}".format('epoch', epoches)))
     print("{0:^40s}".format("{0:22s}: {1:10,d}".format('batch size', train_loader['conf']['batch'])))
 
-    train_info = TrainInfo()
+    train_info = TrainInfo(save_path)
 
-    # if torch.cuda.is_available():
-    #     print('make cuda')
-    #     model = model.cuda()
+    if torch.cuda.is_available():
+        print('make cuda')
+        model = model.cuda()
     tb = TorchBoard(save_path, tag)
     for epoch in range(1, epoches+1):
         model.train()
@@ -78,7 +79,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
             if accuracy is not None:
                 for idx, acc_di in enumerate(accuracy):
                     metrics = acc_di['metrics']
-                    acc = metrics(y, result, 0, x)
+                    acc = metrics(y, result)
                     train_acc[idx] += acc
             del iter_loss
             del result
@@ -98,7 +99,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
                 if accuracy is not None:
                     for idx, acc_di in enumerate(accuracy):
                         metrics = acc_di['metrics']
-                        acc = metrics(y, result, 1, x)
+                        acc = metrics(y, result)
                         validate_acc[idx] += acc
 
                 del iter_loss
@@ -107,8 +108,7 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
         train_info.set_validate_loss(validate_loss)
         if accuracy is not None:
             validate_acc = np.array(validate_acc)/(iter+1)
-            train_info.set_validate_loss(validate_acc)
-
+            train_info.set_validate_acc(validate_acc)
 
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)
