@@ -109,7 +109,6 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
             validate_acc = np.array(validate_acc)/(iter+1)
             train_info.set_validate_loss(validate_acc)
 
-
         if save_path is not None:
             tb.add_train_loss(train_loss, epoch)
             tb.add_validate_loss(validate_loss, epoch)
@@ -126,5 +125,3 @@ def train_model(epoches, model, loss, optim, train_loader, validate_loader, save
 def get_param_count(net):
     total_params = sum(p.numel() for p in net.parameters())
     return total_params
-
-
