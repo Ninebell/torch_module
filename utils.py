@@ -295,8 +295,8 @@ def train_model(epoches, model, loss, optim, train_loader, val_loader, scheduler
                 result = model(x)
                 iter_loss = loss(y, result)
                 total_loss += iter_loss
-                iter_loss.backward()
                 if is_train:
+                    iter_loss.backward()
                     optim.step()
                 if accuracy is not None:
                     for idx, acc_di in enumerate(accuracy):
