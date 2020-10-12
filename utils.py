@@ -253,13 +253,13 @@ class TrainInfo:
     def set_train_loss(self, loss):
         self.train_loss = loss
 
-    def set_validate_loss(self, loss):
+    def set_val_loss(self, loss):
         self.validate_loss = loss
 
     def set_train_acc(self, acc):
         self.train_acc = acc
 
-    def set_validate_acc(self, acc):
+    def set_val_acc(self, acc):
         self.validate_acc = acc
 
 
@@ -323,8 +323,6 @@ def train_model(epoches, model, loss, optim, train_loader, val_loader, scheduler
     tb = TorchBoard(torch_board_path, tag)
     for epoch in range(1, epoches+1):
         model.train()
-        if scheduler is not None:
-            scheduler.step()
         # train_loss = 0
         # val_loss = 0
         # if accuracy is not None:
@@ -385,6 +383,9 @@ def train_model(epoches, model, loss, optim, train_loader, val_loader, scheduler
 
         if checkpoint is not None:
             checkpoint(model, train_info)
+
+        if scheduler is not None:
+            scheduler.step()
 
 
 def get_param_count(net):
